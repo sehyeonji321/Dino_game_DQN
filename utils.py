@@ -10,7 +10,7 @@ import numpy as np
 import cv2
 from PIL import Image
 
-from config import PARAMS_FILE, GET_BASE64_SCRIPT
+from config import PARAMS_FILE, GET_BASE64_SCRIPT, IMG_SIZE
 import torch
 
 def save_params(params):
@@ -37,11 +37,18 @@ def grab_screen(driver):
     screen = np.array(Image.open(BytesIO(base64.b64decode(image_b64))))
     return process_img(screen)
 
-def process_img(image):
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+def process_img(image): ####################################################
+    # RGBA 방어코드
+    if image.ndim == 3 and image.shape[2] == 4:  # RGBA
+        image = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
+    elif image.ndim == 3 and image.shape[2] == 3:  # RGB
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    # 이미지 리사이즈
     image = image[:300, :500]
-    image = cv2.resize(image, (80, 80))
+    image = cv2.resize(image, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_AREA)
     return image
+
 
 def show_img(graphs=False):
     while True:
@@ -49,7 +56,8 @@ def show_img(graphs=False):
         window_title = "logs" if graphs else "game_play"
         cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
         imS = cv2.resize(screen, (800, 400))
-        cv2.imshow(window_title, screen)
+        # cv2.imshow(window_title, screen)
+        cv2.imshow(window_title, imS)   # imS로 수정
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.destroyAllWindows()
             break

@@ -23,7 +23,7 @@ class Game:
         except:
             pass
         
-        self._driver.execute_script("Runner.config.ACCELERATION=0")
+        # self._driver.execute_script("Runner.config.ACCELERATION=0") # 게임 속도를 고정시키는 코드
         self._driver.execute_script(INIT_SCRIPT)
     
     def get_crashed(self):
@@ -58,6 +58,7 @@ class DinoAgent:
     def __init__(self, game):
         self._game = game
         self.jump()
+        self.duck_frames = 0   # duck 상태 유지할 프레임 수
     
     def is_running(self):
         return self._game.get_playing()
@@ -68,8 +69,14 @@ class DinoAgent:
     def jump(self):
         self._game.press_up()
     
-    def duck(self):
+    def duck(self, hold_frames):
         self._game.press_down()
+        self.duck_frames = hold_frames
+
+    def update_duck(self):
+        if self.duck_frames > 0:
+            self._game.press_down()
+            self.duck_frames -= 1
 
 class GameState:
     def __init__(self, agent, game):
@@ -83,9 +90,18 @@ class GameState:
         reward = 0.1
         is_over = False
         
-        if actions[1] == 1:
-            self._agent.jump()
+        # 만약 duck 유지 중이면 다른 액션은 무시
+        if self._agent.duck_frames > 0:
+            self._agent.update_duck()
             reward = -0.01
+        else:
+            if actions[1] == 1:      # jump
+                self._agent.jump()
+                reward = -0.01
+            elif actions[2] == 1:    # duck 시작
+                self._agent.duck(hold_frames=15)  # 0.25초 정도 유지
+                reward = -0.01
+
         
         image = grab_screen(self._game._driver)
         self._display.send(image)
