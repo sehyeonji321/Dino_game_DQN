@@ -35,7 +35,7 @@ def train_network(model, game_state, observe=False):
         a_t = np.zeros([3])
 
         if random.random() <= epsilon:
-            action_index = random.randrange(3)
+            action_index = np.random.choice([0,1,2], p=[0.45, 0.5, 0.05]) # ver.4: 엎드리는 경우는 의도적으로 낮게 sampling
             a_t[action_index] = 1
         else:
             q = model(torch.tensor(s_t).float())
