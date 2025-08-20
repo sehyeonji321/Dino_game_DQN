@@ -1,0 +1,9 @@
+torch
+torchvision
+torchaudio
+numpy
+opencv-python
+Pillow
+selenium
+webdriver-manager
+pandas
