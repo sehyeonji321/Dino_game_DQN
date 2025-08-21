@@ -45,7 +45,7 @@ def process_img(image): ####################################################
         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
     # 이미지 리사이즈
-    image = image[:300, :500]
+    # image = image[:300, :500]
     image = cv2.resize(image, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_AREA)
     return image
 

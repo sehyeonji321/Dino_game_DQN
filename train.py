@@ -9,7 +9,7 @@ import torch.optim as optim
 
 from utils import load_params, save_params
 from config import FINAL_EPSILON, INITIAL_EPSILON, EXPLORE, SAVE_INTERVAL, MODEL_DIR
-from config import OBSERVATION, GAMMA, BATCH_SIZE, LEARNING_RATE
+from config import OBSERVATION, GAMMA, BATCH_SIZE, LEARNING_RATE, SCHEDULER_TYPE, SCHEDULER_STEP_SIZE, SCHEDULER_GAMMA, SCHEDULER_MIN_LR, SCHEDULER_PATIENCE, SCHEDULER_FACTOR
 
 
 def train_network(model, game_state, observe=False):
@@ -19,6 +19,18 @@ def train_network(model, game_state, observe=False):
     epsilon = params["epsilon"]
 
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    
+    # Add learning rate scheduler based on config
+    if SCHEDULER_TYPE == "StepLR":
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
+    elif SCHEDULER_TYPE == "ExponentialLR":
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=SCHEDULER_GAMMA)
+    elif SCHEDULER_TYPE == "ReduceLROnPlateau":
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=SCHEDULER_FACTOR, 
+                                                        patience=SCHEDULER_PATIENCE, min_lr=SCHEDULER_MIN_LR)
+    else:
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
+    
     loss_fn = nn.MSELoss()
 
     do_nothing = np.zeros(3)
@@ -29,9 +41,13 @@ def train_network(model, game_state, observe=False):
     s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
 
     OBSERVE = 999999999 if observe else OBSERVATION
+    
+    # Initialize loss tracking variables
+    loss_sum = 0
+    episode_loss = 0
+    training_steps = 0
 
     while True:
-        loss_sum = 0
         a_t = np.zeros([3])
 
         if random.random() <= epsilon:
@@ -61,13 +77,19 @@ def train_network(model, game_state, observe=False):
             for i in range(BATCH_SIZE):
                 state_t, action_t, reward_t, state_t1, terminal = minibatch[i]
                 inputs[i:i + 1] = state_t
-                target = model(torch.tensor(state_t).float()).detach().numpy()[0]
-                Q_sa = model(torch.tensor(state_t1).float()).detach().numpy()[0]
-
+                
+                # Get current Q-values for the state
+                with torch.no_grad():
+                    current_q = model(torch.tensor(state_t).float()).numpy()[0]
+                    next_q = model(torch.tensor(state_t1).float()).numpy()[0]
+                
+                # Create target Q-values
+                target = current_q.copy()
+                
                 if terminal:
                     target[action_t] = reward_t
                 else:
-                    target[action_t] = reward_t + GAMMA * np.max(Q_sa)
+                    target[action_t] = reward_t + GAMMA * np.max(next_q)
 
                 targets[i] = target
 
@@ -77,10 +99,19 @@ def train_network(model, game_state, observe=False):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            
+            # Step the learning rate scheduler
+            if SCHEDULER_TYPE == "ReduceLROnPlateau":
+                # For ReduceLROnPlateau, we need to pass the loss value
+                scheduler.step(loss.item())
+            else:
+                # For other schedulers, just step
+                scheduler.step()
 
+            # Update loss tracking
             loss_sum += loss.item()
-
-        # s_t = s_t1 if not terminal else s_t
+            episode_loss += loss.item()
+            training_steps += 1
 
         # 다음 상태 업데이트
         if terminal:
@@ -90,6 +121,9 @@ def train_network(model, game_state, observe=False):
             x_t, _, _ = game_state.get_state(do_nothing)
             s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
             s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
+            
+            # Reset episode loss when episode ends
+            episode_loss = 0
         else:
             s_t = s_t1
 
@@ -101,6 +135,24 @@ def train_network(model, game_state, observe=False):
             torch.save(model.state_dict(), os.path.join(MODEL_DIR, f"episode_{t}.pth"))
             torch.save(model.state_dict(), "./latest.pth")
             save_params({"D": D, "time": t, "epsilon": epsilon})
+            
+            # Save current learning rate for monitoring
+            current_lr = scheduler.get_last_lr()[0]
+            print(f'Current learning rate: {current_lr:.2e}')
+            
             game_state._game.resume()
 
-        print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, loss: {round(loss_sum, 3)}')
+        # Print learning rate every 1000 steps for monitoring
+        if t % 1000 == 0:
+            current_lr = scheduler.get_last_lr()[0]
+            if training_steps > 0:
+                avg_loss = loss_sum / training_steps
+                print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, avg_loss: {round(avg_loss, 6)}, lr: {current_lr:.2e}')
+            else:
+                print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, loss: N/A (not training yet), lr: {current_lr:.2e}')
+        else:
+            if training_steps > 0:
+                avg_loss = loss_sum / training_steps
+                print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, avg_loss: {round(avg_loss, 6)}')
+            else:
+                print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, loss: N/A (not training yet)')
