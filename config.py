@@ -22,14 +22,14 @@ PARAMS_FILE = os.path.join(DATA_DIR, "params.pkl")
 INIT_SCRIPT = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 GET_BASE64_SCRIPT = "canvasRunner = document.getElementById('runner-canvas'); return canvasRunner.toDataURL().substring(22)"
 
-ACTIONS = 3
-GAMMA = 0.99
-OBSERVATION = 10000  
-EXPLORE = 500000  
-FINAL_EPSILON = 0.005
-INITIAL_EPSILON = 0.8  
-REPLAY_MEMORY = 100000  
-BATCH_SIZE = 32  
-LEARNING_RATE = 1e-4  
-IMG_CHANNELS = 4
-IMG_SIZE = 128   # resolution 조절하기. 변경 시 model.py CNN FC layer 고려할 것!
+    ACTIONS = 3
+    GAMMA = 0.99
+    OBSERVATION = 20000  
+    EXPLORE = 500000
+    FINAL_EPSILON = 0.001
+    INITIAL_EPSILON = 0.4 
+    REPLAY_MEMORY = 100000
+    BATCH_SIZE = 32  
+    LEARNING_RATE = 1e-4  
+    IMG_CHANNELS = 4
+    IMG_SIZE = 128   # resolution 조절하기. 변경 시 model.py CNN FC layer 고려할 것!
