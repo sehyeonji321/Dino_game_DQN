@@ -49,16 +49,16 @@ def train_network(model, game_state, observe=False):
         if t > OBSERVE:
             if t <= 100000:
                 # 0 ~ 100k: 0.4 -> 0.1
-                epsilon = INITIAL_EPSILON - (0.3 * (t / 100000))
+                epsilon = INITIAL_EPSILON - (INITIAL_EPSILON - 0.1) * (t / 100_000)
             elif t <= 200000:
-                # 100k ~ 200k: 0.1 -> 0.03
-                epsilon = 0.1 - (0.07 * ((t - 100000) / 100000))
+                # 100k ~ 200k: 0.1 -> 0.02
+                epsilon = 0.1 - (0.1 - 0.02) * ((t - 100_000) / 100_000)
             elif t <= 300000:
-                # 200k ~ 300k: 0.03 -> 0.01
-                epsilon = 0.03 - (0.02 * ((t - 200000) / 100000))
+                # 200k ~ 300k: 0.02 -> 0.01
+                epsilon = 0.02 - (0.02 - 0.01) * ((t - 200_000) / 100_000)
             elif t <= 1000000:
                 # 300k ~ 1M: 0.01 -> 0.005
-                epsilon = 0.01 - (0.005 * ((t - 300000) / 700000))
+                epsilon = 0.01 - (0.01 - FINAL_EPSILON) * ((t - 300_000) / 700_000)
             else:
                 # 이후는 0.005로 고정
                 epsilon = FINAL_EPSILON
