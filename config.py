@@ -26,10 +26,18 @@ ACTIONS = 3
 GAMMA = 0.99
 OBSERVATION = 20000  
 EXPLORE = 500000
-FINAL_EPSILON = 0.001
+FINAL_EPSILON = 0.01
 INITIAL_EPSILON = 0.4 
 REPLAY_MEMORY = 100000
 BATCH_SIZE = 32  
-LEARNING_RATE = 1e-4  
-IMG_CHANNELS = 4
+LEARNING_RATE = 3e-4  
+IMG_CHANNELS = 1
 IMG_SIZE = 128   # resolution 조절하기. 변경 시 model.py CNN FC layer 고려할 것!
+
+# Learning Rate Scheduler Configuration
+SCHEDULER_TYPE = "StepLR"  # Options: "StepLR", "ExponentialLR", "ReduceLROnPlateau"
+SCHEDULER_STEP_SIZE = 10000  # Reduce LR every 10000 steps (for StepLR)
+SCHEDULER_GAMMA = 0.9        # Multiply LR by 0.9 each time
+SCHEDULER_MIN_LR = 1e-5     # Minimum learning rate
+SCHEDULER_PATIENCE = 5000    # Patience for ReduceLROnPlateau
+SCHEDULER_FACTOR = 0.5       # Factor for ReduceLROnPlateau
