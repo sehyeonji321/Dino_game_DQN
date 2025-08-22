@@ -37,14 +37,31 @@ def train_network(model, game_state, observe=False):
         if random.random() <= epsilon:
             action_index = np.random.choice([0,1,2], p=[0.45, 0.5, 0.05]) # ver.4: 엎드리는 경우는 의도적으로 낮게 sampling
             a_t[action_index] = 1
+            action_type = "explore"
         else:
             q = model(torch.tensor(s_t).float())
             _, action_index = torch.max(q, 1)
             action_index = action_index.item()
             a_t[action_index] = 1
+            action_type = "exploit"
 
-        if epsilon > FINAL_EPSILON and t > OBSERVE:
-            epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
+        # 나중에 이거 바꿔보기    
+        if t > OBSERVE:
+            if t <= 100000:
+                # 0 ~ 100k: 0.4 -> 0.1
+                epsilon = INITIAL_EPSILON - (0.3 * (t / 100000))
+            elif t <= 200000:
+                # 100k ~ 200k: 0.1 -> 0.03
+                epsilon = 0.1 - (0.07 * ((t - 100000) / 100000))
+            elif t <= 300000:
+                # 200k ~ 300k: 0.03 -> 0.01
+                epsilon = 0.03 - (0.02 * ((t - 200000) / 100000))
+            elif t <= 1000000:
+                # 300k ~ 1M: 0.01 -> 0.005
+                epsilon = 0.01 - (0.005 * ((t - 300000) / 700000))
+            else:
+                # 이후는 0.005로 고정
+                epsilon = FINAL_EPSILON
 
         x_t1, r_t, terminal = game_state.get_state(a_t)
         x_t1 = x_t1.reshape(1, x_t1.shape[0], x_t1.shape[1], 1)
@@ -103,4 +120,4 @@ def train_network(model, game_state, observe=False):
             save_params({"D": D, "time": t, "epsilon": epsilon})
             game_state._game.resume()
 
-        print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index}, reward: {r_t}, loss: {round(loss_sum, 3)}')
+        print(f'timestep: {t}, epsilon: {round(epsilon, 3)}, action: {action_index} ({action_type}), reward: {r_t}, loss: {round(loss_sum, 3)}')

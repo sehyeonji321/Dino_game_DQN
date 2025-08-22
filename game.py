@@ -106,14 +106,14 @@ class GameState:
         # 만약 duck 유지 중이면 다른 액션은 무시
         if self._agent.duck_frames > 0:
             self._agent.update_duck()
-            reward = -0.01
+            reward = -0.05
         else:
             if actions[1] == 1:      # jump
                 self._agent.jump()
-                reward = -0.01
+                reward = -0.05
             elif actions[2] == 1:    # duck 시작
                 self._agent.duck(hold_frames=3)  # 0.25초 정도 유지
-                reward = -0.01
+                reward = -0.05
 
         
         image = grab_screen(self._game._driver)
@@ -121,7 +121,7 @@ class GameState:
         
         if self._agent.is_crashed():
             self._game.restart()
-            reward = -15
+            reward = -30
             is_over = True
         
         return image, reward, is_over

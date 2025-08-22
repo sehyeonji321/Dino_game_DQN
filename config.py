@@ -9,16 +9,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 GAME_URL = "chrome://dino"
 CHROME_DRIVER_PATH = ChromeDriverManager().install()
-
 DATA_DIR = "./data"
 MODEL_DIR = "./model"
 SAVE_INTERVAL = 1000
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
-
 PARAMS_FILE = os.path.join(DATA_DIR, "params.pkl")
-
+ 
 INIT_SCRIPT = "document.getElementsByClassName('runner-canvas')[0].id = 'runner-canvas'"
 GET_BASE64_SCRIPT = "canvasRunner = document.getElementById('runner-canvas'); return canvasRunner.toDataURL().substring(22)"
 
@@ -26,7 +24,7 @@ ACTIONS = 3
 GAMMA = 0.99
 OBSERVATION = 20000  
 EXPLORE = 500000
-FINAL_EPSILON = 0.001
+FINAL_EPSILON = 0.005
 INITIAL_EPSILON = 0.4 
 REPLAY_MEMORY = 100000
 BATCH_SIZE = 32  
