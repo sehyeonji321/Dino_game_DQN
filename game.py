@@ -100,28 +100,28 @@ class GameState:
     
     def get_state(self, actions):
         score = self._game.get_score()
-        reward = 0.2
+        reward = 3
         is_over = False
         
         # 만약 duck 유지 중이면 다른 액션은 무시
         if self._agent.duck_frames > 0:
             self._agent.update_duck()
-            reward = -0.05
+            reward = -0.1
         else:
             if actions[1] == 1:      # jump
                 self._agent.jump()
-                reward = -0.05
+                reward = -0.1
             elif actions[2] == 1:    # duck 시작
                 self._agent.duck(hold_frames=3)  # 0.25초 정도 유지
-                reward = -0.05
+                reward = -0.1
 
         
         image = grab_screen(self._game._driver)
         self._display.send(image)
-        
+
         if self._agent.is_crashed():
-            self._game.restart()
-            reward = -30
+            reward = -10 - (score // 10)
             is_over = True
-        
+            return image, reward, is_over
+                
         return image, reward, is_over

@@ -30,7 +30,7 @@ def train_network(model, game_state, observe=False):
     do_nothing = np.zeros(3)
     do_nothing[0] = 1
 
-    x_t, r_0, terminal = game_state.get_state(do_nothing)
+    x_t, _,_ = game_state.get_state(do_nothing)
     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
     s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
 
@@ -88,14 +88,14 @@ def train_network(model, game_state, observe=False):
             targets = np.zeros((BATCH_SIZE, 3))
 
             for i in range(BATCH_SIZE):
-                state_t, action_t, reward_t, state_t1, terminal = minibatch[i]
+                state_t, action_t, reward_t, state_t1, terminal_batch = minibatch[i]
                 inputs[i:i + 1] = state_t
                 target = model(torch.tensor(state_t).float()).detach().numpy()[0]
 
                 ############# target Q값은 target_model로 계산
                 Q_sa = target_model(torch.tensor(state_t1).float()).detach().numpy()[0]
 
-                if terminal:
+                if terminal_batch:
                     target[action_t] = reward_t
                 else:
                     target[action_t] = reward_t + GAMMA * np.max(Q_sa)
@@ -113,28 +113,58 @@ def train_network(model, game_state, observe=False):
 
         # s_t = s_t1 if not terminal else s_t
 
-        # 다음 상태 업데이트
+        # # 다음 상태 업데이트
+        # if terminal:
+        #     episode_count += 1
+        #     print(f"[Episode {episode_count} finished] total reward: {round(episode_reward,2)}")
+        #     episode_reward = 0  #  리셋
+
+        #     # crash → 여기서 환경 리셋
+        #     game_state._game.restart()
+        #     # crash 했으면 초기 상태 다시 쌓기
+        #     do_nothing = np.zeros(3)
+        #     do_nothing[0] = 1
+        #     x_t, _, _ = game_state.get_state(do_nothing)
+        #     s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
+        #     s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
+
+        #     continue # crash 나면 로그찍히는거 막아야함
+        # else:
+        #     s_t = s_t1
+
+            
+        t += 1
+
+        print(
+            f'timestep: {t}, epsilon: {round(epsilon, 3)}, '
+            f'action: {action_index} ({action_type}), '
+            f'reward: {r_t}, loss: {round(loss_sum, 3)}, '
+            f'episode_reward: {round(episode_reward, 2)}'
+        )
+
+        # terminal 처리
         if terminal:
             episode_count += 1
-            print(f"[Episode {episode_count} finished] total reward: {round(episode_reward,2)}")
-            episode_reward = 0  #  리셋
+            print(f"[Episode {episode_count} finished] total reward: {round(episode_reward, 2)}")
+            episode_reward = 0
 
-            # crash 했으면 초기 상태 다시 쌓기
+            # reset
+            game_state._game.restart()
             do_nothing = np.zeros(3)
             do_nothing[0] = 1
             x_t, _, _ = game_state.get_state(do_nothing)
             s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
             s_t = s_t.reshape(1, s_t.shape[0], s_t.shape[1], s_t.shape[2])
+
+            # reset 단계 → transition/log/timestep 증가 없음
+            continue
         else:
             s_t = s_t1
-
-            
-        t += 1
 
         ######### 일정 step마다 target 네트워크 업데이트
         if t % TARGET_UPDATE_INTERVAL == 0:
             target_model.load_state_dict(model.state_dict())
-            print(f"🔄 Target network updated at timestep {t}")
+            print(f"Target network updated at timestep {t}")
 
         if t % SAVE_INTERVAL == 0:
             game_state._game.pause()
@@ -142,11 +172,5 @@ def train_network(model, game_state, observe=False):
             torch.save(model.state_dict(), "./latest.pth")
             save_params({"D": D, "time": t, "epsilon": epsilon})
             game_state._game.resume()
-            
-            
-        print(
-            f'timestep: {t}, epsilon: {round(epsilon, 3)}, '
-            f'action: {action_index} ({action_type}), '
-            f'reward: {r_t}, loss: {round(loss_sum, 3)}, '
-            f'episode_reward: {round(episode_reward, 2)}'
-        )
+
+    
